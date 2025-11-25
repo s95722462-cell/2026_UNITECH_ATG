@@ -1,0 +1,125 @@
+
+body {
+    background-color: #f8f9fa;
+    font-family: 'Arial', sans-serif;
+}
+.container {
+    max-width: 900px;
+    background-color: #ffffff;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+h1 {
+    color: #343a40;
+    font-weight: bold;
+}
+.voice-search-btn {
+    width: 60px; /* Fixed width for the voice search button */
+}
+.error-message {
+    color: #dc3545;
+    font-weight: bold;
+    margin-bottom: 15px;
+    text-align: center;
+}
+.table thead th {
+    background-color: #343a40;
+    color: #ffffff;
+    text-align: center;
+    vertical-align: middle;
+}
+.table tbody td {
+    text-align: center;
+    vertical-align: middle;
+}
+/* Style for making rows clickable */
+.clickable-row:hover {
+    background-color: #e9ecef; /* Light grey highlight on hover */
+    cursor: pointer; /* Pointer cursor to indicate it's clickable */
+}
+
+@media (max-width: 768px) {
+    .container {
+        padding: 15px;
+    }
+    h1 {
+        font-size: 1.5rem;
+    }
+    .table-responsive {
+        border: none;
+    }
+    .table thead {
+        display: none; /* Hide table headers on small screens */
+    }
+    .table, .table tbody, .table tr, .table td {
+        display: block;
+        width: 100%;
+    }
+    .table tr {
+        margin-bottom: 15px;
+        border: 1px solid #dee2e6;
+        border-radius: 5px;
+        padding: 0;
+    }
+    .table td {
+        display: block;
+        position: relative;
+        padding: 10px;
+        padding-left: 50%; /* Increased space for the label */
+        text-align: right;
+        border: none;
+        border-bottom: 1px solid #eee;
+    }
+    .table tr td:last-child {
+        border-bottom: none;
+    }
+    .table td::before {
+        content: attr(data-label); /* Use data-label for the "header" */
+        position: absolute;
+        left: 10px;
+        width: 45%; /* Increased fixed width for the label */
+        font-weight: bold;
+        text-align: left;
+        color: #495057;
+    }
+
+    /* Style for the placeholder message on mobile */
+    .table td.placeholder-message {
+        text-align: center; /* Center the text */
+        padding-left: 10px; /* Reset padding-left */
+        padding-right: 10px; /* Ensure symmetric padding */
+        position: static; /* Remove relative positioning */
+        display: table-cell; /* Revert to default table cell display */
+        vertical-align: middle;
+        white-space: normal; /* Allow text to wrap if needed */
+    }
+    .table td.placeholder-message::before {
+        content: none; /* Hide the data-label pseudo-element for message */
+    }
+}
+
+.multi-search-container {
+    margin-bottom: 2rem;
+}
+
+/* Styles for the clear search button */
+.search-wrapper {
+    position: relative;
+    flex-grow: 1;
+}
+
+.clear-search-btn {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    font-size: 1.5rem;
+    color: #6c757d;
+    display: none; /* Hidden by default */
+}
+
+.clear-search-btn:hover {
+    color: #343a40;
+}
