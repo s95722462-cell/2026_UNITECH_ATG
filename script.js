@@ -16,6 +16,7 @@
     const multiResultsBuffer = document.getElementById('multiResultsBuffer');
     const multiShareButton = document.getElementById('multiShareButton');
     const clearSearchButton = document.getElementById('clearSearchButton');
+    const clearMultiSearchButton = document.getElementById('clearMultiSearchButton');
 
 
     // Check for Web Speech API compatibility
@@ -27,6 +28,13 @@
         voiceSearchButton.style.display = 'none'; // Hide button if not supported
         console.warn('Web Speech API is not supported in this browser.');
     }
+
+    clearMultiSearchButton.addEventListener('click', () => {
+        multiSearchInput.value = '';
+        multiResultsBuffer.value = ''; // Also clear the results buffer
+        multiResultsContainer.style.display = 'none'; // Hide results container
+        multiShareButton.disabled = true; // Disable share button
+    });
 
     async function loadProductData() {
         errorMessageDiv.style.display = 'none';
@@ -186,7 +194,7 @@
 
             const name = shareButton.dataset.name;
             const price = shareButton.dataset.price;
-            const textToCopy = `규격: ${name}\n견적가: ${price}원\n\nATG 대리점 유니테크`;
+            const textToCopy = `규격: ${name}\n견적가: ${price}원\n\nATG대리점 유니테크`;
 
             navigator.clipboard.writeText(textToCopy).then(() => {
                 const originalText = shareButton.textContent;
@@ -255,12 +263,14 @@
                     let calculatedDisplayPrice = 'N/A';
 
                     if (!isNaN(basePrice)) {
+                        let isItemMarginTooLow = false; // Local flag for the current item
                         if (profitMargin > 0) {
                             const divisor = (1 - profitMargin / 100);
                             if (divisor > 0) {
                                 const sellingPriceUnrounded = basePrice / divisor;
                                 if ((sellingPriceUnrounded - basePrice) < (basePrice * 0.05)) {
-                                    isAnyMarginTooLow = true;
+                                    isItemMarginTooLow = true; // Mark current item as too low margin
+                                    isAnyMarginTooLow = true; // Global flag for any item having too low margin
                                 }
                                 
                                 const sellingPrice = Math.round(sellingPriceUnrounded / 1000) * 1000;
@@ -271,8 +281,8 @@
                         } else {
                             calculatedDisplayPrice = basePrice.toLocaleString('ko-KR');
                         }
+                        resultString += `   견적가: ${calculatedDisplayPrice}원${isItemMarginTooLow ? ' (마진 낮음)' : ''}\n\n`;
                     }
-                    resultString += `   견적가: ${calculatedDisplayPrice}원\n\n`;
                 } else {
                     resultString += `   견적가: 오타가 있거나 없는 제품입니다.\n`;
                     // Suggest similar items
@@ -314,7 +324,7 @@
             return;
         }
 
-        const textToCopy = multiResultsBuffer.value + '\n\nATG 대리점 유니테크';
+        const textToCopy = multiResultsBuffer.value + '\n\nATG대리점 유니테크';
 
         navigator.clipboard.writeText(textToCopy).then(() => {
             const originalText = multiShareButton.textContent;
