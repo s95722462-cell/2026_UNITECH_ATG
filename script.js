@@ -28,10 +28,12 @@
         voiceSearchButton.style.display = 'none'; // Hide button if not supported
         console.warn('Web Speech API is not supported in this browser.');
     }
+    const multiResultsTableBody = document.getElementById('multiResultsTableBody');
 
     clearMultiSearchButton.addEventListener('click', () => {
         multiSearchInput.value = '';
         multiResultsBuffer.value = ''; // Also clear the results buffer
+        multiResultsTableBody.innerHTML = ''; // Clear the results table
         multiResultsContainer.style.display = 'none'; // Hide results container
         multiShareButton.disabled = true; // Disable share button
     });
@@ -196,18 +198,7 @@
             const price = shareButton.dataset.price;
             const textToCopy = `규격: ${name}\n견적가: ${price}원\n\nATG대리점 유니테크`;
 
-            navigator.clipboard.writeText(textToCopy).then(() => {
-                const originalText = shareButton.textContent;
-                shareButton.textContent = '복사됨!';
-                shareButton.disabled = true;
-                setTimeout(() => {
-                    shareButton.textContent = originalText;
-                    shareButton.disabled = false;
-                }, 1500);
-            }).catch(err => {
-                console.error('클립보드 복사 실패:', err);
-                alert('클립보드 복사에 실패했습니다.');
-            });
+            copyToClipboard(textToCopy, shareButton);
 
         } else if (row && row.dataset.code) {
             const productCode = row.dataset.code;
@@ -219,97 +210,96 @@
     function searchMultipleProducts() {
         multiSearchButton.disabled = true;
         multiSearchButton.textContent = '처리 중...';
-
+    
         setTimeout(() => {
             const inputText = multiSearchInput.value.trim();
             if (!inputText) {
                 multiResultsBuffer.value = '입력창에 규격을 입력해주세요.';
+                multiResultsTableBody.innerHTML = '';
                 multiResultsContainer.style.display = 'block';
                 multiShareButton.disabled = true;
                 multiSearchButton.disabled = false;
                 multiSearchButton.textContent = '다중 검색 실행';
                 return;
             }
-
+    
             const specs = inputText.split(',').map(s => s.trim()).filter(s => s);
             if (specs.length > 10) {
                 multiResultsBuffer.value = '오류: 최대 10개까지만 입력할 수 있습니다.';
+                multiResultsTableBody.innerHTML = '';
                 multiResultsContainer.style.display = 'block';
                 multiShareButton.disabled = true;
                 multiSearchButton.disabled = false;
                 multiSearchButton.textContent = '다중 검색 실행';
                 return;
             }
-
+    
             const profitMargin = parseFloat(discountRateInput.value) || 0;
             let foundCount = 0;
-            let resultString = '';
             let isAnyMarginTooLow = false;
-
-            specs.forEach((spec, index) => {
+            const multiResultsData = [];
+    
+            specs.forEach(spec => {
                 const searchTerm = spec.toLowerCase();
                 const foundItem = productData.find(item => {
                     const itemCode = item['품목코드'] ? String(item['품목코드']).toLowerCase() : '';
                     const itemName = item['품목명'] ? String(item['품목명']).toLowerCase() : '';
                     return itemCode === searchTerm || itemName === searchTerm;
                 });
-                
-                resultString += `${index + 1}. 규격: ${spec}\n`;
-
+    
+                const resultEntry = {
+                    spec: spec.toUpperCase(), // Convert spec to uppercase for display
+                    item: foundItem,
+                    formattedBasePrice: 'N/A',
+                    calculatedDisplayPrice: 'N/A',
+                    isMarginTooLow: false,
+                    suggestions: ''
+                };
+    
                 if (foundItem) {
                     foundCount++;
                     const basePriceStr = foundItem['가격'] || '0';
                     const basePrice = parseFloat(basePriceStr.replace(/,/g, ''));
-                    let calculatedDisplayPrice = 'N/A';
-
+    
                     if (!isNaN(basePrice)) {
-                        let isItemMarginTooLow = false; // Local flag for the current item
+                        resultEntry.formattedBasePrice = basePrice.toLocaleString('ko-KR');
                         if (profitMargin > 0) {
                             const divisor = (1 - profitMargin / 100);
                             if (divisor > 0) {
                                 const sellingPriceUnrounded = basePrice / divisor;
                                 if ((sellingPriceUnrounded - basePrice) < (basePrice * 0.05)) {
-                                    isItemMarginTooLow = true; // Mark current item as too low margin
-                                    isAnyMarginTooLow = true; // Global flag for any item having too low margin
+                                    resultEntry.isMarginTooLow = true;
+                                    isAnyMarginTooLow = true;
                                 }
-                                
                                 const sellingPrice = Math.round(sellingPriceUnrounded / 1000) * 1000;
-                                calculatedDisplayPrice = sellingPrice.toLocaleString('ko-KR');
+                                resultEntry.calculatedDisplayPrice = sellingPrice.toLocaleString('ko-KR');
                             } else {
-                                calculatedDisplayPrice = '이익률 초과';
+                                resultEntry.calculatedDisplayPrice = '이익률 초과';
                             }
                         } else {
-                            calculatedDisplayPrice = basePrice.toLocaleString('ko-KR');
+                            resultEntry.calculatedDisplayPrice = resultEntry.formattedBasePrice;
                         }
-                        resultString += `   견적가: ${calculatedDisplayPrice}원${isItemMarginTooLow ? ' (마진 낮음)' : ''}\n\n`;
                     }
                 } else {
-                    resultString += `   견적가: 오타가 있거나 없는 제품입니다.\n`;
-                    // Suggest similar items
+                    // Suggest similar items for not found items
                     const similarItems = productData.filter(item => {
                         const itemCode = item['품목코드'] ? String(item['품목코드']).toLowerCase() : '';
                         const itemName = item['품목명'] ? String(item['품목명']).toLowerCase() : '';
                         return itemCode.includes(searchTerm) || itemName.includes(searchTerm);
-                    }).slice(0, 2); // Show max 2 suggestions
-
+                    }).slice(0, 2);
+    
                     if (similarItems.length > 0) {
-                        const suggestions = similarItems.map(item => item['품목명'] || item['품목코드']).join(', ');
-                        resultString += `   혹시 다음을 찾으셨나요?: ${suggestions}\n\n`;
-                    } else {
-                        resultString += `\n`;
+                        resultEntry.suggestions = similarItems.map(item => item['품목명'] || item['품목코드']).join(', ');
                     }
                 }
+                multiResultsData.push(resultEntry);
             });
-
-            multiResultsBuffer.value = resultString.trim();
+    
+            renderMultiResults(multiResultsData, profitMargin);
+    
             multiResultsContainer.style.display = 'block';
-
-            if (foundCount === specs.length && specs.length > 0 && !isAnyMarginTooLow && profitMargin > 0) {
-                multiShareButton.disabled = false;
-            } else {
-                multiShareButton.disabled = true;
-            }
-
+            multiShareButton.disabled = !(specs.length > 0 && profitMargin > 0);
+            
             multiSearchButton.disabled = false;
             multiSearchButton.textContent = '다중 검색 실행';
         }, 0);
@@ -325,17 +315,7 @@
         }
 
         const textToCopy = multiResultsBuffer.value + '\n\nATG대리점 유니테크';
-
-        navigator.clipboard.writeText(textToCopy).then(() => {
-            const originalText = multiShareButton.textContent;
-            multiShareButton.textContent = '복사됨!';
-            setTimeout(() => {
-                multiShareButton.textContent = originalText;
-            }, 1500);
-        }).catch(err => {
-            console.error('클립보드 복사 실패:', err);
-            alert('클립보드 복사에 실패했습니다.');
-        });
+        copyToClipboard(textToCopy, multiShareButton);
     });
 
 
@@ -387,3 +367,99 @@
     }
 
     initialize();
+
+    function renderMultiResults(resultsData, profitMargin) {
+        multiResultsTableBody.innerHTML = '';
+        let resultStringForBuffer = '';
+    
+        resultsData.forEach((result, index) => {
+            const row = multiResultsTableBody.insertRow();
+            let rowHtml = '';
+            let bufferText = `${index + 1}. 규격: ${result.spec}\n`;
+    
+            if (result.item) {
+                rowHtml = `
+                    <td data-label="품목코드">${result.item['품목코드'] || 'N/A'}</td>
+                    <td data-label="규격">${result.item['품목명'] || 'N/A'}</td>
+                    <td data-label="가격">${result.formattedBasePrice}</td>
+                    <td data-label="견적가">${result.calculatedDisplayPrice}${result.isMarginTooLow ? ' (마진 낮음)' : ''}</td>
+                `;
+                bufferText += `   견적가: ${result.calculatedDisplayPrice}원${result.isMarginTooLow ? ' (마진 낮음)' : ''}\n\n`;
+            } else {
+                let notFoundMessage = '오타가 있거나 없는 제품입니다.';
+                if (result.suggestions) {
+                    notFoundMessage += `<br><small>혹시: ${result.suggestions}?</small>`;
+                }
+                rowHtml = `
+                    <td data-label="품목코드">${result.spec}</td>
+                    <td data-label="규격" colspan="3">${notFoundMessage}</td>
+                `;
+                row.classList.add('table-danger'); // Highlight not found rows
+    
+                bufferText += `   견적가: 오타가 있거나 없는 제품입니다.\n`;
+                if (result.suggestions) {
+                    bufferText += `   혹시 다음을 찾으셨나요?: ${result.suggestions}\n\n`;
+                } else {
+                    bufferText += `\n`;
+                }
+            }
+            row.innerHTML = rowHtml;
+            resultStringForBuffer += bufferText;
+        });
+    
+        multiResultsBuffer.value = resultStringForBuffer.trim();
+    }
+
+    function copyToClipboard(text, buttonElement) {
+        const showSuccess = (btn) => {
+            const originalText = btn.textContent;
+            const originalDisabled = btn.disabled;
+            btn.textContent = '복사됨!';
+            btn.disabled = true;
+            setTimeout(() => {
+                btn.textContent = originalText;
+                btn.disabled = originalDisabled;
+            }, 1500);
+        };
+    
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(() => {
+                showSuccess(buttonElement);
+            }).catch(err => {
+                console.error('Async clipboard copy failed, falling back:', err);
+                fallbackCopyTextToClipboard(text, buttonElement, showSuccess);
+            });
+        } else {
+            console.warn('Async clipboard not available, falling back.');
+            fallbackCopyTextToClipboard(text, buttonElement, showSuccess);
+        }
+    }
+    
+    function fallbackCopyTextToClipboard(text, buttonElement, successCallback) {
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        
+        // Avoid scrolling to bottom
+        textArea.style.top = "0";
+        textArea.style.left = "0";
+        textArea.style.position = "fixed";
+    
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+    
+        try {
+            const successful = document.execCommand('copy');
+            if (successful) {
+                successCallback(buttonElement);
+            } else {
+                console.error('Fallback copy command failed');
+                alert('클립보드 복사에 실패했습니다.');
+            }
+        } catch (err) {
+            console.error('Fallback copy exception:', err);
+            alert('클립보드 복사에 실패했습니다.');
+        }
+    
+        document.body.removeChild(textArea);
+    }
