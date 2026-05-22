@@ -6,6 +6,10 @@
     const resultsTableBody = document.getElementById('resultsTableBody');
     const errorMessageDiv = document.getElementById('errorMessage');
     const discountRateInput = document.getElementById('discountRate');
+    const multiSearchInput = document.getElementById('multiSearchInput');
+    const multiSearchButton = document.getElementById('multiSearchButton');
+    const resetButton = document.getElementById('resetButton');
+    const copyAllButton = document.getElementById('copyAllButton');
     let productData = [];
     let currentResults = [];
 
@@ -39,6 +43,13 @@
     function renderResults(results) {
         resultsTableBody.innerHTML = '';
         errorMessageDiv.style.display = 'none';
+        
+        // 결과가 2개 이상일 때만 전체 복사 버튼 표시
+        if (results.length > 1) {
+            copyAllButton.style.display = 'inline-block';
+        } else {
+            copyAllButton.style.display = 'none';
+        }
 
         const profitMargin = parseFloat(discountRateInput.value) || 0;
 
@@ -73,7 +84,11 @@
                 row.classList.add('clickable-row');
 
                 const isSamePrice = (formattedBasePrice === calculatedDisplayPrice);
-                const shareButton = `<button class="btn btn-sm btn-outline-secondary share-btn${isSamePrice ? ' disabled' : ''}" ${isSamePrice ? 'disabled' : ''} data-name="${item['품목명']}" data-price="${calculatedDisplayPrice}">${isSamePrice ? '동일 가격' : '공유'}</button>`;
+                // 따옴표 문제 방지를 위해 속성값을 이스케이프 처리하거나 안전하게 처리
+                const safeItemName = (item['품목명'] || 'N/A').replace(/"/g, '&quot;');
+                
+                // 가격과 견적가가 동일하면 공유 버튼을 숨김
+                const shareButton = isSamePrice ? '' : `<button class="btn btn-sm btn-outline-secondary share-btn" data-name="${safeItemName}" data-price="${calculatedDisplayPrice}">공유</button>`;
 
                 row.innerHTML = `
                     <td data-label="품목코드">${item['품목코드'] || 'N/A'}</td>
@@ -92,7 +107,7 @@
     }
 
     function searchProducts() {
-        const searchTerm = searchInput.value.trim().toLowerCase();
+        const searchTerm = searchInput.value.trim();
         if (!searchTerm) {
             errorMessageDiv.textContent = '검색어를 입력해주세요.';
             errorMessageDiv.style.display = 'block';
@@ -101,11 +116,35 @@
             return;
         }
 
+        // 공백이나 쉼표로 검색어 분리 (2글자 이상 권장되나 유연하게 처리)
+        const queries = searchTerm.split(/[\s,]+/).filter(q => q.length > 0);
+        
+        if (queries.length === 0) {
+            currentResults = [];
+            renderResults(currentResults);
+            return;
+        }
+
         currentResults = productData.filter(item => {
-            const itemCode = item['품목코드'] ? String(item['품목코드']).toLowerCase() : '';
-            const itemName = item['품목명'] ? String(item['품목명']).toLowerCase() : '';
-            return itemCode.includes(searchTerm) || itemName.includes(searchTerm);
+            const itemCode = item['품목코드'] ? String(item['품목코드']).toUpperCase().replace(/[-\s]/g, "") : '';
+            const itemName = item['품목명'] ? String(item['품목명']).toUpperCase().replace(/[-\s]/g, "") : '';
+            
+            return queries.some(q => {
+                const cleanQ = q.toUpperCase().replace(/[-\s]/g, "");
+                if (!cleanQ) return false;
+                return itemCode.includes(cleanQ) || itemName.includes(cleanQ);
+            });
         });
+
+        // 결과 상위 100개로 제한 (성능 최적화)
+        currentResults = currentResults.slice(0, 100);
+
+        if (currentResults.length === 0) {
+            errorMessageDiv.textContent = '해당 검색어와 일치하는 제품을 찾을 수 없습니다.';
+            errorMessageDiv.style.display = 'block';
+        } else {
+            errorMessageDiv.style.display = 'none';
+        }
 
         renderResults(currentResults);
     }
@@ -131,8 +170,8 @@
 
         recognition.onresult = (event) => {
             const speechResult = event.results[0][0].transcript;
-            const processedSpeechResult = speechResult.replace(/[-\s]/g, '');
-            searchInput.value = processedSpeechResult;
+            // 음성 검색 결과도 동일하게 검색 처리
+            searchInput.value = speechResult;
             searchProducts();
         };
 
@@ -165,7 +204,7 @@
             event.stopPropagation(); // Prevent row click event when share button is clicked
             const name = shareButton.dataset.name;
             const price = shareButton.dataset.price;
-            const textToCopy = `규격: ${name}\n견적가: ${price}원`;
+            const textToCopy = `[ATG 대리점 유니테크]\n규격: ${name}\n견적가: ${price}원`;
 
             navigator.clipboard.writeText(textToCopy).then(() => {
                 const originalText = shareButton.textContent;
@@ -198,6 +237,74 @@
 
     discountRateInput.addEventListener('input', () => {
         renderResults(currentResults);
+    });
+
+    // 다중 검색 기능 (기존 textarea 방식도 개선된 로직 적용)
+    function multiSearchProducts() {
+        const input = multiSearchInput.value.trim();
+        if (!input) {
+            errorMessageDiv.textContent = '규격을 입력해주세요.';
+            errorMessageDiv.style.display = 'block';
+            return;
+        }
+
+        // 입력받은 모든 텍스트를 메인 검색창에 넣고 실행하는 것과 동일하게 처리
+        searchInput.value = input;
+        searchProducts();
+    }
+
+    multiSearchButton.addEventListener('click', multiSearchProducts);
+
+    copyAllButton.addEventListener('click', () => {
+        if (currentResults.length === 0) return;
+
+        const profitMargin = parseFloat(discountRateInput.value) || 0;
+        let textToCopy = `[ATG 대리점 유니테크]\n`;
+
+        currentResults.forEach((item, index) => {
+            const basePriceStr = item['가격'] || '0';
+            const basePrice = parseFloat(basePriceStr.replace(/,/g, ''));
+            let calculatedDisplayPrice = 'N/A';
+
+            if (!isNaN(basePrice)) {
+                if (profitMargin > 0) {
+                    const divisor = (1 - profitMargin / 100);
+                    if (divisor > 0) {
+                        let sellingPrice = basePrice / divisor;
+                        sellingPrice = Math.round(sellingPrice / 1000) * 1000;
+                        calculatedDisplayPrice = sellingPrice.toLocaleString('ko-KR');
+                    } else {
+                        calculatedDisplayPrice = '이익률 초과';
+                    }
+                } else {
+                    calculatedDisplayPrice = basePrice.toLocaleString('ko-KR');
+                }
+            }
+
+            textToCopy += `\n${index + 1}. 규격: ${item['품목명']}\n   견적가: ${calculatedDisplayPrice}원`;
+        });
+
+        navigator.clipboard.writeText(textToCopy).then(() => {
+            const originalText = copyAllButton.innerHTML;
+            copyAllButton.textContent = '전체 복사됨!';
+            copyAllButton.classList.replace('btn-success', 'btn-outline-success');
+            setTimeout(() => {
+                copyAllButton.innerHTML = originalText;
+                copyAllButton.classList.replace('btn-outline-success', 'btn-success');
+            }, 1500);
+        }).catch(err => {
+            console.error('전체 복사 실패:', err);
+            alert('전체 복사에 실패했습니다.');
+        });
+    });
+
+    resetButton.addEventListener('click', () => {
+        multiSearchInput.value = '';
+        searchInput.value = '';
+        currentResults = [];
+        renderResults(currentResults);
+        errorMessageDiv.style.display = 'none';
+        resultsTableBody.innerHTML = `<tr><td colspan="5" class="text-center placeholder-message">검색어를 입력하고 검색 버튼을 누르세요.</td></tr>`;
     });
 
     loadProductData();

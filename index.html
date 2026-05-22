@@ -13,7 +13,7 @@
 </head>
 <body>
     <div class="container mt-5">
-        <h1 class="mb-4 text-center">ATG 제품 가격 검색 <small class="text-muted" style="font-size: 0.5em; margin-left: 20px; float: right;">made by 알프</small></h1>
+        <h1 class="mb-4 text-center">ATG 제품 가격 검색 <small class="text-muted" style="font-size: 0.5em; margin-left: 20px; float: right;">update:2026.05.22<br>made by 알프</small></h1>
         <p class="text-center text-muted" style="font-size: 0.9em;">Chrome 브라우저를 이용해야 음성 검색이 가능합니다.</p>
 
         <div class="input-group mb-4">
@@ -27,12 +27,29 @@
 
         <div id="errorMessage" class="error-message" style="display: none;"></div>
 
+        <hr>
+        <div class="multi-search-section mb-4">
+            <h5>다중 규격 검색 (최대 10개)</h5>
+            <p class="text-muted" style="font-size: 0.85em;">쉼표(,)로 규격을 구분하여 입력하세요.</p>
+            <textarea id="multiSearchInput" class="form-control mb-2" rows="3" placeholder="예: PGX-044-H-003, PDM-020-N-120, ..."></textarea>
+            <div class="text-end">
+                <button class="btn btn-secondary me-2" id="resetButton">초기화</button>
+                <button class="btn btn-info text-white" id="multiSearchButton">다중 검색 실행</button>
+            </div>
+        </div>
+
         <div class="input-group mb-3 w-50">
             <label for="discountRate" class="input-group-text text-danger">이익률 (%)</label>
             <input type="number" id="discountRate" class="form-control" placeholder="할인율 입력 (예: 10)">
         </div>
 
         <div class="table-responsive">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h5 class="mb-0">검색 결과</h5>
+                <button class="btn btn-success btn-sm" id="copyAllButton" style="display: none;">
+                    <i class="fas fa-copy me-1"></i>결과 전체 복사
+                </button>
+            </div>
             <table id="priceTable" class="table table-striped table-hover">
                 <thead>
                     <tr>
