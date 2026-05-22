@@ -25,6 +25,7 @@
 
     async function loadProductData() {
         errorMessageDiv.style.display = 'none';
+        resultsTableBody.innerHTML = `<tr><td colspan="5" class="text-center">데이터를 불러오는 중입니다...</td></tr>`;
         try {
             const response = await fetch('csvjson.json');
             if (!response.ok) {
@@ -35,8 +36,9 @@
             resultsTableBody.innerHTML = `<tr><td colspan="5" class="text-center placeholder-message">검색어를 입력하고 검색 버튼을 누르세요.</td></tr>`;
         } catch (error) {
             console.error('제품 데이터를 불러오는 중 오류 발생:', error);
-            errorMessageDiv.textContent = '데이터를 불러오는 데 실패했습니다. (Failed to fetch)';
+            errorMessageDiv.textContent = '데이터를 불러오는 데 실패했습니다. 파일이 없거나 형식이 잘못되었습니다.';
             errorMessageDiv.style.display = 'block';
+            resultsTableBody.innerHTML = `<tr><td colspan="5" class="text-center text-danger">데이터 로드 실패</td></tr>`;
         }
     }
 
@@ -84,10 +86,7 @@
                 row.classList.add('clickable-row');
 
                 const isSamePrice = (formattedBasePrice === calculatedDisplayPrice);
-                // 따옴표 문제 방지를 위해 속성값을 이스케이프 처리하거나 안전하게 처리
                 const safeItemName = (item['품목명'] || 'N/A').replace(/"/g, '&quot;');
-                
-                // 가격과 견적가가 동일하면 공유 버튼을 숨김
                 const shareButton = isSamePrice ? '' : `<button class="btn btn-sm btn-outline-secondary share-btn" data-name="${safeItemName}" data-price="${calculatedDisplayPrice}">공유</button>`;
 
                 row.innerHTML = `
@@ -107,8 +106,8 @@
     }
 
     function searchProducts() {
-        const searchTerm = searchInput.value.trim();
-        if (!searchTerm) {
+        const rawSearchTerm = searchInput.value.trim();
+        if (!rawSearchTerm) {
             errorMessageDiv.textContent = '검색어를 입력해주세요.';
             errorMessageDiv.style.display = 'block';
             currentResults = [];
@@ -116,31 +115,37 @@
             return;
         }
 
-        // 공백이나 쉼표로 검색어 분리 (2글자 이상 권장되나 유연하게 처리)
-        const queries = searchTerm.split(/[\s,]+/).filter(q => q.length > 0);
+        // 쉼표로 그룹 분리 (OR 조건)
+        const groups = rawSearchTerm.split(',').map(g => g.trim()).filter(g => g.length > 0);
         
-        if (queries.length === 0) {
-            currentResults = [];
-            renderResults(currentResults);
-            return;
-        }
-
         currentResults = productData.filter(item => {
-            const itemCode = item['품목코드'] ? String(item['품목코드']).toUpperCase().replace(/[-\s]/g, "") : '';
-            const itemName = item['품목명'] ? String(item['품목명']).toUpperCase().replace(/[-\s]/g, "") : '';
-            
-            return queries.some(q => {
-                const cleanQ = q.toUpperCase().replace(/[-\s]/g, "");
-                if (!cleanQ) return false;
-                return itemCode.includes(cleanQ) || itemName.includes(cleanQ);
+            const code = item['품목코드'] ? String(item['품목코드']).toUpperCase() : '';
+            const name = item['품목명'] ? String(item['품목명']).toUpperCase() : '';
+            const cleanCode = code.replace(/[-\s]/g, "");
+            const cleanName = name.replace(/[-\s]/g, "");
+
+            // 그룹 중 하나라도 만족하면 포함 (OR)
+            return groups.some(group => {
+                // 그룹 내 단어들은 모두 포함해야 함 (AND)
+                const words = group.split(/\s+/).filter(w => w.length > 0);
+                if (words.length === 0) return false;
+
+                return words.every(word => {
+                    const w = word.toUpperCase();
+                    const cleanW = w.replace(/[-\s]/g, "");
+                    if (!cleanW) return false;
+
+                    return code.includes(w) || name.includes(w) || 
+                           cleanCode.includes(cleanW) || cleanName.includes(cleanW);
+                });
             });
         });
 
-        // 결과 상위 100개로 제한 (성능 최적화)
-        currentResults = currentResults.slice(0, 100);
+        // 결과 상위 200개로 확장
+        currentResults = currentResults.slice(0, 200);
 
         if (currentResults.length === 0) {
-            errorMessageDiv.textContent = '해당 검색어와 일치하는 제품을 찾을 수 없습니다.';
+            errorMessageDiv.textContent = '일치하는 제품을 찾을 수 없습니다. (철자나 기호를 확인해 주세요)';
             errorMessageDiv.style.display = 'block';
         } else {
             errorMessageDiv.style.display = 'none';
