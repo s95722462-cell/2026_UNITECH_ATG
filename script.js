@@ -25,20 +25,25 @@
 
     async function loadProductData() {
         errorMessageDiv.style.display = 'none';
-        resultsTableBody.innerHTML = `<tr><td colspan="5" class="text-center">데이터를 불러오는 중입니다...</td></tr>`;
+        resultsTableBody.innerHTML = `<tr><td colspan="5" class="text-center">데이터를 불러오는 중입니다... (csvjson.json)</td></tr>`;
         try {
             const response = await fetch('csvjson.json');
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                throw new Error(`파일을 찾을 수 없습니다. (HTTP 상태 코드: ${response.status}) \n파일명이 정확한지 확인해 주세요.`);
             }
             productData = await response.json();
+            
+            if (!Array.isArray(productData) || productData.length === 0) {
+                throw new Error('데이터 형식이 잘못되었거나 데이터가 비어 있습니다.');
+            }
+
             console.log('제품 데이터 로드 완료.', productData.length, '개 항목');
-            resultsTableBody.innerHTML = `<tr><td colspan="5" class="text-center placeholder-message">검색어를 입력하고 검색 버튼을 누르세요.</td></tr>`;
+            resultsTableBody.innerHTML = `<tr><td colspan="5" class="text-center placeholder-message">검색어를 입력하고 검색 버튼을 누르세요. (${productData.length.toLocaleString()}개 항목 로드됨)</td></tr>`;
         } catch (error) {
             console.error('제품 데이터를 불러오는 중 오류 발생:', error);
-            errorMessageDiv.textContent = '데이터를 불러오는 데 실패했습니다. 파일이 없거나 형식이 잘못되었습니다.';
+            errorMessageDiv.innerHTML = `<strong>데이터 로드 실패:</strong><br>${error.message}`;
             errorMessageDiv.style.display = 'block';
-            resultsTableBody.innerHTML = `<tr><td colspan="5" class="text-center text-danger">데이터 로드 실패</td></tr>`;
+            resultsTableBody.innerHTML = `<tr><td colspan="5" class="text-center text-danger">데이터 로딩 에러 발생</td></tr>`;
         }
     }
 
