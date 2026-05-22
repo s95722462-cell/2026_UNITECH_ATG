@@ -10,6 +10,26 @@
     const multiSearchButton = document.getElementById('multiSearchButton');
     const resetButton = document.getElementById('resetButton');
     const copyAllButton = document.getElementById('copyAllButton');
+    
+    // Font size controls
+    const fontUp = document.getElementById('fontUp');
+    const fontDown = document.getElementById('fontDown');
+    let currentFontSize = 16;
+
+    fontUp.addEventListener('click', () => {
+        if (currentFontSize < 24) {
+            currentFontSize++;
+            document.body.style.fontSize = `${currentFontSize}px`;
+        }
+    });
+
+    fontDown.addEventListener('click', () => {
+        if (currentFontSize > 12) {
+            currentFontSize--;
+            document.body.style.fontSize = `${currentFontSize}px`;
+        }
+    });
+
     let productData = [];
     let currentResults = [];
 
