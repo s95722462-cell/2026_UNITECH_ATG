@@ -87,7 +87,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(`파일을 찾을 수 없습니다.`);
             }
             productData = await response.json();
-            resultsList.innerHTML = `<div style="text-align: center; padding: 40px 0; color: #94a3b8; font-style: italic; font-size: 14px;">품목명 또는 코드를 입력하여 검색을 시작하세요.</div>`;
+            resultsList.innerHTML = ``;
         } catch (error) {
             console.error('데이터 로드 오류:', error);
             errorMessageDiv.innerHTML = `<strong>데이터 로드 실패</strong>`;
