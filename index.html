@@ -10,11 +10,23 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
+    <div class="container" id="mainContainer">
         <header class="app-header">
-            <h1>ATG 제품 가격 검색</h1>
+            <h1 style="margin: 0;">ATG 제품 가격 검색</h1>
             <p class="app-subtitle">Chrome 브라우저에서 음성 검색이 최적화됩니다.</p>
         </header>
+
+        <!-- Global Notepad Section -->
+        <div class="global-notepad">
+            <div class="notepad-header">
+                <span><i class="fas fa-sticky-note"></i> 메모</span>
+                <div>
+                    <span id="saveStatus" style="font-size: 10px; color: #22c55e; display: none; margin-right: 10px;">저장됨</span>
+                    <button id="toggleNotepadBtn" style="background: #f08c00; color: white; border: none; padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer;">메모 열기</button>
+                </div>
+            </div>
+            <textarea id="globalNote" style="display: none;" placeholder="중요한 내용을 여기에 메모하세요." spellcheck="false"></textarea>
+        </div>
 
         <div class="search-container">
             <input type="text" id="searchInput" placeholder="품목코드 또는 품목명 (쉼표로 다중검색)">
@@ -44,7 +56,7 @@
 
         <div id="advancedSearchSection" class="advanced-search-card" style="display: none;">
             <h5>다중 규격 검색 (최대 10개)</h5>
-            <textarea id="multiSearchInput" class="form-control mb-2" rows="3" placeholder="예: PGX-044-H-003, PDM-020-N-120" style="width: 100%; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; margin-bottom: 10px;"></textarea>
+            <textarea id="multiSearchInput" class="form-control mb-2" rows="3" placeholder="예: PGX-044-H-003, PDM-020-N-120"></textarea>
             <div style="display: flex; gap: 8px; justify-content: flex-end;">
                 <button class="btn-icon" id="resetButton" style="background: #f1f5f9; width: auto; padding: 0 16px; font-size: 13px; font-weight: 600;">초기화</button>
                 <button class="btn-icon" id="multiSearchButton" style="background: #0ea5e9; color: white; width: auto; padding: 0 16px; font-size: 13px; font-weight: 600;">검색 실행</button>
@@ -72,7 +84,7 @@
         </footer>
     </div>
 
-    <script src="script.js"></script>
+    <script type="module" src="script.js"></script>
     <script>
         // 간단한 토글 기능 추가
         document.getElementById('toggleAdvanced').addEventListener('click', () => {
