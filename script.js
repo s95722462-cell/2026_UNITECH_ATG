@@ -182,7 +182,7 @@ document.addEventListener('DOMContentLoaded', () => {
     resultsList.addEventListener('click', (event) => {
         const shareBtn = event.target.closest('.share-btn');
         if (shareBtn) {
-            const text = `[유니테크 견적]\n규격: ${shareBtn.dataset.name}\n견적가: ${shareBtn.dataset.price}원`;
+            const text = `[ATG대리점 유니테크]\n규격: ${shareBtn.dataset.name}\n견적가: ${shareBtn.dataset.price}원`;
             navigator.clipboard.writeText(text).then(() => {
                 const icon = shareBtn.querySelector('i');
                 icon.className = 'fas fa-check';
@@ -203,6 +203,33 @@ document.addEventListener('DOMContentLoaded', () => {
         multiSearchInput.value = '';
         currentResults = [];
         renderResults([]);
+    });
+
+    copyAllButton.addEventListener('click', () => {
+        const profitMargin = parseFloat(discountRateInput.value) || 0;
+        let fullText = "[ATG대리점 유니테크]\n\n";
+        
+        currentResults.forEach((item, index) => {
+            const basePriceStr = item['가격'] || '0';
+            const basePrice = parseFloat(basePriceStr.replace(/,/g, ''));
+            let displayPrice = 'N/A';
+            
+            if (!isNaN(basePrice)) {
+                let sellingPrice = basePrice / (1 - profitMargin / 100);
+                sellingPrice = Math.round(sellingPrice / 1000) * 1000;
+                displayPrice = sellingPrice.toLocaleString('ko-KR');
+            }
+            
+            fullText += `${index + 1}. ${item['품목명'] || 'N/A'}\n   견적가: ${displayPrice}원\n\n`;
+        });
+
+        navigator.clipboard.writeText(fullText.trim()).then(() => {
+            const originalHTML = copyAllButton.innerHTML;
+            copyAllButton.innerHTML = '<i class="fas fa-check"></i> 복사 완료';
+            setTimeout(() => {
+                copyAllButton.innerHTML = originalHTML;
+            }, 2000);
+        });
     });
 
     loadMemo();
