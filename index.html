@@ -56,7 +56,7 @@
         </div>
 
         <div id="advancedSearchSection" class="advanced-search-card" style="display: none;">
-            <h5>다중 규격 검색 (최대 10개)</h5>
+            <h5>다중 규격 검색 (최대 10개, 정확히 일치)</h5>
             <textarea id="multiSearchInput" class="form-control mb-2" rows="3" placeholder="예: PGX-044-H-003, PDM-020-N-120"></textarea>
             <div style="display: flex; gap: 8px; justify-content: flex-end;">
                 <button class="btn-icon" id="resetButton" style="background: #f1f5f9; width: auto; padding: 0 16px; font-size: 13px; font-weight: 600;">초기화</button>
@@ -67,9 +67,17 @@
         <div class="results-section">
             <div class="results-header">
                 <h3>검색 결과</h3>
-                <button id="copyAllButton" style="display: none; background: #22c55e; color: white; border: none; padding: 4px 12px; border-radius: 10px; font-size: 11px; font-weight: 700;">
-                    <i class="fas fa-copy me-1"></i> 전체 복사
-                </button>
+                <div style="display: flex; gap: 6px;">
+                    <button id="copyAllButton" style="display: none; background: #22c55e; color: white; border: none; padding: 4px 12px; border-radius: 10px; font-size: 11px; font-weight: 700;">
+                        <i class="fas fa-copy me-1"></i> 전체 복사
+                    </button>
+                    <button id="copyKakaoTextButton" style="display: none; background: #ffe066; color: #3c1e1e; border: none; padding: 4px 12px; border-radius: 10px; font-size: 11px; font-weight: 700;">
+                        <i class="fas fa-comment me-1"></i> 카톡 값 복사
+                    </button>
+                    <button id="copyKakaoImageButton" style="display: none; background: #2563eb; color: white; border: none; padding: 4px 12px; border-radius: 10px; font-size: 11px; font-weight: 700;">
+                        <i class="fas fa-image me-1"></i> 카톡 사진 복사
+                    </button>
+                </div>
             </div>
             
             <div id="resultsList">
