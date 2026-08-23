@@ -142,9 +142,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function renderResults(results) {
+    function renderResults(results, hasQuery) {
         resultsList.innerHTML = '';
         const profitMargin = parseFloat(discountRateInput.value) || 0;
+        const queryExists = hasQuery !== undefined ? hasQuery : !!searchInput.value.trim();
         
         if (results.length > 1) {
             copyAllButton.style.display = 'inline-block';
@@ -183,9 +184,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 `;
                 resultsList.appendChild(card);
             });
-        } else if (searchInput.value) {
+        } else if (queryExists) {
             errorMessageDiv.textContent = '일치하는 제품을 찾을 수 없습니다.';
             errorMessageDiv.style.display = 'block';
+        } else {
+            errorMessageDiv.style.display = 'none';
         }
     }
 
@@ -201,6 +204,40 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         renderResults(currentResults.slice(0, 100));
+    }
+
+    // 품목코드 비교용 정규화: 대문자화 + 하이픈/공백 등 구분기호 제거
+    function normalizeCode(str) {
+        return String(str).toUpperCase().replace(/[^A-Z0-9가-힣]/g, '');
+    }
+
+    // 다중 검색: 메인 검색창(searchInput)을 전혀 건드리지 않는 독립 로직 (정확히 일치)
+    const MAX_MULTI_TERMS = 10;
+    function searchMultiProducts() {
+        const raw = multiSearchInput.value;
+        let terms = raw.split(/[\n,]+/).map(t => t.trim()).filter(Boolean);
+        if (terms.length === 0) return;
+        if (terms.length > MAX_MULTI_TERMS) {
+            terms = terms.slice(0, MAX_MULTI_TERMS);
+        }
+
+        const normTerms = terms.map(normalizeCode);
+        const seen = new Set();
+        const matched = [];
+        normTerms.forEach(nt => {
+            productData.forEach(p => {
+                if (normalizeCode(p['품목코드']) === nt) {
+                    const key = p['품목코드'] + '_' + p['품목명'];
+                    if (!seen.has(key)) {
+                        seen.add(key);
+                        matched.push(p);
+                    }
+                }
+            });
+        });
+        currentResults = matched;
+
+        renderResults(currentResults.slice(0, 100), true);
     }
 
     if (SpeechRecognition) {
@@ -237,10 +274,7 @@ document.addEventListener('DOMContentLoaded', () => {
     searchButton.addEventListener('click', searchProducts);
     searchInput.addEventListener('keyup', (e) => e.key === 'Enter' && searchProducts());
     discountRateInput.addEventListener('input', () => renderResults(currentResults));
-    multiSearchButton.addEventListener('click', () => {
-        searchInput.value = multiSearchInput.value.trim();
-        searchProducts();
-    });
+    multiSearchButton.addEventListener('click', searchMultiProducts);
     resetButton.addEventListener('click', () => {
         searchInput.value = '';
         multiSearchInput.value = '';
@@ -316,6 +350,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         const padding = 20;
+        const titleHeight = 40;
         const rowHeight = 42;
         const headerHeight = 46;
         const colNoWidth = 60;
@@ -335,7 +370,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const tableWidth = colNoWidth + colNameWidth + colPriceWidth;
         const tableHeight = headerHeight + bodyRows * rowHeight;
         const canvasWidth = tableWidth + padding * 2;
-        const canvasHeight = tableHeight + padding * 2;
+        const canvasHeight = titleHeight + tableHeight + padding * 2;
 
         const canvas = document.createElement('canvas');
         const scale = 3;
@@ -348,7 +383,14 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
         const startX = padding;
-        const startY = padding;
+        const startY = padding + titleHeight;
+
+        // 상단 타이틀: ATG대리점 유니테크
+        ctx.fillStyle = '#1e3a8a';
+        ctx.font = 'bold 20px "Malgun Gothic", "Apple SD Gothic Neo", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('ATG대리점 유니테크', startX + tableWidth / 2, padding + titleHeight / 2);
 
         ctx.fillStyle = '#2563eb';
         ctx.fillRect(startX, startY, tableWidth, headerHeight);
