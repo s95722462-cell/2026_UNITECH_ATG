@@ -85,6 +85,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let productData = [];
     let currentResults = [];
+    let displayedResults = [];
 
     // Check for Web Speech API compatibility
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -142,12 +143,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function renderResults(results, hasQuery) {
+    let isMultiExactResult = false;
+
+    function renderResults(results, hasQuery, isMultiExact) {
         resultsList.innerHTML = '';
         const profitMargin = parseFloat(discountRateInput.value) || 0;
         const queryExists = hasQuery !== undefined ? hasQuery : !!searchInput.value.trim();
-        
-        if (results.length > 1) {
+        if (isMultiExact !== undefined) isMultiExactResult = isMultiExact;
+
+        if (isMultiExactResult && results.length > 0) {
             copyAllButton.style.display = 'inline-block';
             copyKakaoTextButton.style.display = 'inline-block';
             copyKakaoImageButton.style.display = 'inline-block';
@@ -203,7 +207,8 @@ document.addEventListener('DOMContentLoaded', () => {
             return queries.some(q => code.includes(q) || name.includes(q));
         });
 
-        renderResults(currentResults.slice(0, 100));
+        displayedResults = currentResults.slice(0, 100);
+        renderResults(displayedResults, undefined, false);
     }
 
     // 품목코드 비교용 정규화: 대문자화 + 하이픈/공백 등 구분기호 제거
@@ -237,7 +242,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         currentResults = matched;
 
-        renderResults(currentResults.slice(0, 100), true);
+        displayedResults = currentResults.slice(0, 10);
+        renderResults(displayedResults, true, true);
     }
 
     if (SpeechRecognition) {
@@ -273,20 +279,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     searchButton.addEventListener('click', searchProducts);
     searchInput.addEventListener('keyup', (e) => e.key === 'Enter' && searchProducts());
-    discountRateInput.addEventListener('input', () => renderResults(currentResults));
+    discountRateInput.addEventListener('input', () => renderResults(displayedResults));
     multiSearchButton.addEventListener('click', searchMultiProducts);
     resetButton.addEventListener('click', () => {
         searchInput.value = '';
         multiSearchInput.value = '';
         currentResults = [];
-        renderResults([]);
+        displayedResults = [];
+        renderResults([], false, false);
     });
 
     copyAllButton.addEventListener('click', () => {
         const profitMargin = parseFloat(discountRateInput.value) || 0;
         let fullText = "[ATG대리점 유니테크]\n\n";
 
-        currentResults.forEach((item, index) => {
+        displayedResults.forEach((item, index) => {
             const { displayPrice } = calcDisplayPrice(item, profitMargin);
             fullText += `${index + 1}. ${item['품목명'] || 'N/A'}\n   견적가: ${displayPrice}원\n\n`;
         });
@@ -298,18 +305,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 카톡 값 복사: 탭 구분 텍스트 + HTML 테이블(엑셀 호환) 동시 복사
     copyKakaoTextButton.addEventListener('click', async () => {
-        if (currentResults.length === 0) {
+        if (displayedResults.length === 0) {
             showCopyFeedback(copyKakaoTextButton, false);
             return;
         }
         const profitMargin = parseFloat(discountRateInput.value) || 0;
 
-        const plain = currentResults.map(item => {
+        const plain = displayedResults.map(item => {
             const { displayPrice } = calcDisplayPrice(item, profitMargin);
             return `${item['품목명'] || ''}\t${displayPrice}`;
         }).join('\n');
 
-        const htmlRows = currentResults.map(item => {
+        const htmlRows = displayedResults.map(item => {
             const { displayPrice } = calcDisplayPrice(item, profitMargin);
             const name = String(item['품목명'] || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
             const price = String(displayPrice).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -339,12 +346,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 카톡 사진 복사: 검색 결과를 표 이미지로 그려서 클립보드에 복사
     copyKakaoImageButton.addEventListener('click', () => {
-        if (currentResults.length === 0) {
+        if (displayedResults.length === 0) {
             showCopyFeedback(copyKakaoImageButton, false);
             return;
         }
         const profitMargin = parseFloat(discountRateInput.value) || 0;
-        const rows = currentResults.map((item, i) => {
+        const rows = displayedResults.map((item, i) => {
             const { displayPrice } = calcDisplayPrice(item, profitMargin);
             return { no: String(i + 1), name: item['품목명'] || '', price: String(displayPrice) };
         });
