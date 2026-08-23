@@ -30,19 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return true;
         } catch (err) {
             console.error('클립보드 복사 실패:', err);
-            try {
-                const ta = document.createElement('textarea');
-                ta.value = text;
-                ta.style.position = 'fixed';
-                ta.style.left = '-9999px';
-                document.body.appendChild(ta);
-                ta.select();
-                document.execCommand('copy');
-                document.body.removeChild(ta);
-                return true;
-            } catch (e2) {
-                return false;
-            }
+            return false;
         }
     }
 
@@ -97,7 +85,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let productData = [];
     let currentResults = [];
-    let lastSearchMode = 'single'; // 'single' | 'multi' — 카톡 사진은 multi만
 
     // Check for Web Speech API compatibility
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -159,12 +146,10 @@ document.addEventListener('DOMContentLoaded', () => {
         resultsList.innerHTML = '';
         const profitMargin = parseFloat(discountRateInput.value) || 0;
         
-        if (results.length >= 1) {
+        if (results.length > 1) {
             copyAllButton.style.display = 'inline-block';
-            // 카톡 값 복사: 결과 있으면 항상
             copyKakaoTextButton.style.display = 'inline-block';
-            // 카톡 사진 복사: 다중 검색(정확 일치) 결과일 때만
-            copyKakaoImageButton.style.display = (lastSearchMode === 'multi') ? 'inline-block' : 'none';
+            copyKakaoImageButton.style.display = 'inline-block';
         } else {
             copyAllButton.style.display = 'none';
             copyKakaoTextButton.style.display = 'none';
@@ -208,7 +193,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const term = searchInput.value.trim().toUpperCase();
         if (!term) return;
 
-        lastSearchMode = 'single'; // 포함 검색
         const queries = term.split(/[\s,]+/).filter(q => q.length > 1);
         currentResults = productData.filter(p => {
             const code = String(p['품목코드']).toUpperCase();
@@ -253,64 +237,14 @@ document.addEventListener('DOMContentLoaded', () => {
     searchButton.addEventListener('click', searchProducts);
     searchInput.addEventListener('keyup', (e) => e.key === 'Enter' && searchProducts());
     discountRateInput.addEventListener('input', () => renderResults(currentResults));
-    // 다중 검색: 위 단일 검색창과 분리, 정확히 일치만
-    function handleMultiSearch() {
-        errorMessageDiv.style.display = 'none';
-        const raw = multiSearchInput.value.trim();
-        if (!raw) {
-            currentResults = [];
-            lastSearchMode = 'multi';
-            renderResults([]);
-            return;
-        }
-
-        lastSearchMode = 'multi'; // 정확 일치 → 카톡 사진 활성화
-
-        // 줄바꿈·쉼표 구분, 최대 10개
-        let terms = raw
-            .split(/[\n,]+/)
-            .map(t => t.trim())
-            .filter(Boolean);
-
-        if (terms.length > 10) {
-            terms = terms.slice(0, 10);
-        }
-
-        const termsUpper = terms.map(t => t.toUpperCase());
-        const matched = [];
-        const seen = new Set();
-
-        termsUpper.forEach(term => {
-            productData.forEach(p => {
-                const code = String(p['품목코드'] || '').toUpperCase();
-                const name = String(p['품목명'] || '').toUpperCase();
-                // 정확히 일치만 (품목코드 또는 품목명)
-                if (code === term || name === term) {
-                    const key = code || name;
-                    if (!seen.has(key)) {
-                        seen.add(key);
-                        matched.push(p);
-                    }
-                }
-            });
-        });
-
-        currentResults = matched;
-        renderResults(matched);
-
-        if (matched.length === 0) {
-            errorMessageDiv.textContent = '일치하는 제품을 찾을 수 없습니다.';
-            errorMessageDiv.style.display = 'block';
-        }
-    }
-
-    multiSearchButton.addEventListener('click', handleMultiSearch);
+    multiSearchButton.addEventListener('click', () => {
+        searchInput.value = multiSearchInput.value.trim();
+        searchProducts();
+    });
     resetButton.addEventListener('click', () => {
         searchInput.value = '';
         multiSearchInput.value = '';
         currentResults = [];
-        lastSearchMode = 'single';
-        errorMessageDiv.style.display = 'none';
         renderResults([]);
     });
 
@@ -336,8 +270,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         const profitMargin = parseFloat(discountRateInput.value) || 0;
 
-        const title = 'ATG대리점 유니테크';
-        const plain = title + '\n' + currentResults.map(item => {
+        const plain = currentResults.map(item => {
             const { displayPrice } = calcDisplayPrice(item, profitMargin);
             return `${item['품목명'] || ''}\t${displayPrice}`;
         }).join('\n');
@@ -348,7 +281,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const price = String(displayPrice).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
             return `<tr><td style="padding:4px 12px;white-space:nowrap;">${name}</td><td style="padding:4px 12px;white-space:nowrap;text-align:right;">${price}</td></tr>`;
         }).join('');
-        const html = `<div style="font-weight:bold;margin-bottom:6px;">${title}</div><table><tbody>${htmlRows}</tbody></table>`;
+        const html = `<table><tbody>${htmlRows}</tbody></table>`;
 
         let ok = false;
         try {
@@ -383,14 +316,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         const padding = 20;
-        const titleHeight = 40;
         const rowHeight = 42;
         const headerHeight = 46;
         const colNoWidth = 60;
         const colPriceWidth = 150;
-        const FIXED_ROWS = 10;
-        const bodyRows = Math.max(FIXED_ROWS, rows.length);
-        const titleText = 'ATG대리점 유니테크';
+        const bodyRows = rows.length;
 
         const measureCanvas = document.createElement('canvas');
         const measureCtx = measureCanvas.getContext('2d');
@@ -405,7 +335,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const tableWidth = colNoWidth + colNameWidth + colPriceWidth;
         const tableHeight = headerHeight + bodyRows * rowHeight;
         const canvasWidth = tableWidth + padding * 2;
-        const canvasHeight = titleHeight + tableHeight + padding * 2;
+        const canvasHeight = tableHeight + padding * 2;
 
         const canvas = document.createElement('canvas');
         const scale = 3;
@@ -417,15 +347,8 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
-        // 상단 타이틀
-        ctx.fillStyle = '#1e3a5f';
-        ctx.font = 'bold 20px "Malgun Gothic", "Apple SD Gothic Neo", sans-serif';
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(titleText, padding, padding + titleHeight / 2);
-
         const startX = padding;
-        const startY = padding + titleHeight;
+        const startY = padding;
 
         ctx.fillStyle = '#2563eb';
         ctx.fillRect(startX, startY, tableWidth, headerHeight);
